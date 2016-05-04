@@ -34,10 +34,10 @@ import (
 type SimpleChaincode struct {
 }
 
-var marbleIndexStr = "_marbleindex"				//name for the key/value that will store a list of all known marbles
+var betIndexStr = "_betindex"				//name for the key/value that will store a list of all known bets
 var openTradesStr = "_opentrades"				//name for the key/value that will store all open trades
 
-type Marble struct{
+type Bet struct{
 	Name string `json:"name"`					//the fieldtags are needed to keep case from bouncing around
 	Color string `json:"color"`
 	Size int `json:"size"`
@@ -125,9 +125,9 @@ func (t *SimpleChaincode) Run(stub *shim.ChaincodeStub, function string, args []
 		return res, err
 	} else if function == "write" {											//writes a value to the chaincode state
 		return t.Write(stub, args)
-	} else if function == "init_marble" {									//create a new marble
-		return t.init_marble(stub, args)
-	} else if function == "set_user" {										//change owner of a marble
+	} else if function == "init_marble" {									//create a new bet
+		return t.init_bet(stub, args)
+	} else if function == "set_user" {										//change owner of a bet
 		res, err := t.set_user(stub, args)
 		cleanTrades(stub)													//lets make sure all open trades are still valid
 		return res, err
@@ -195,28 +195,28 @@ func (t *SimpleChaincode) Delete(stub *shim.ChaincodeStub, args []string) ([]byt
 		return nil, errors.New("Failed to delete state")
 	}
 
-	//get the marble index
-	marblesAsBytes, err := stub.GetState(marbleIndexStr)
+	//get the bet index
+	betsAsBytes, err := stub.GetState(betIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get marble index")
+		return nil, errors.New("Failed to get bet index")
 	}
-	var marbleIndex []string
-	json.Unmarshal(marblesAsBytes, &marbleIndex)								//un stringify it aka JSON.parse()
+	var betIndex []string
+	json.Unmarshal(betsAsBytes, &betIndex)								//un stringify it aka JSON.parse()
 	
-	//remove marble from index
-	for i,val := range marbleIndex{
+	//remove bet from index
+	for i,val := range betIndex{
 		fmt.Println(strconv.Itoa(i) + " - looking at " + val + " for " + name)
 		if val == name{															//find the correct marble
-			fmt.Println("found marble")
-			marbleIndex = append(marbleIndex[:i], marbleIndex[i+1:]...)			//remove it
-			for x:= range marbleIndex{											//debug prints...
-				fmt.Println(string(x) + " - " + marbleIndex[x])
+			fmt.Println("found bet")
+			betIndex = append(betIndex[:i], betIndex[i+1:]...)			//remove it
+			for x:= range betIndex{											//debug prints...
+				fmt.Println(string(x) + " - " + betIndex[x])
 			}
 			break
 		}
 	}
-	jsonAsBytes, _ := json.Marshal(marbleIndex)									//save new index
-	err = stub.PutState(marbleIndexStr, jsonAsBytes)
+	jsonAsBytes, _ := json.Marshal(betIndex)									//save new index
+	err = stub.PutState(betIndexStr, jsonAsBytes)
 	return nil, nil
 }
 
@@ -242,18 +242,18 @@ func (t *SimpleChaincode) Write(stub *shim.ChaincodeStub, args []string) ([]byte
 }
 
 // ============================================================================================================================
-// Init Marble - create a new marble, store into chaincode state
+// Init Bet - create a new bet, store into chaincode state
 // ============================================================================================================================
-func (t *SimpleChaincode) init_marble(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *SimpleChaincode) init_bet(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
 	var err error
 
 	//   0       1       2     3
-	// "asdf", "blue", "35", "bob"
+	// "name", "blue", "amount", "player"
 	if len(args) != 4 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
 
-	fmt.Println("- start init marble")
+	fmt.Println("- start init bet")
 	if len(args[0]) <= 0 {
 		return nil, errors.New("1st argument must be a non-empty string")
 	}
@@ -275,16 +275,16 @@ func (t *SimpleChaincode) init_marble(stub *shim.ChaincodeStub, args []string) (
 	color := strings.ToLower(args[1])
 	user := strings.ToLower(args[3])
 
-	str := `{"name": "` + args[0] + `", "color": "` + color + `", "size": ` + strconv.Itoa(size) + `, "user": "` + user + `"}`
-	err = stub.PutState(args[0], []byte(str))								//store marble with id as key
+	str := `{"name": "` + args[0] + `", "color": "` + color + `", "wager": ` + strconv.Itoa(size) + `, "user": "` + user + `"}`
+	err = stub.PutState(args[0], []byte(str))								//store bet with id as key
 	if err != nil {
 		return nil, err
 	}
 		
-	//get the marble index
-	marblesAsBytes, err := stub.GetState(marbleIndexStr)
+	//get the bet index
+	betsAsBytes, err := stub.GetState(betIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get marble index")
+		return nil, errors.New("Failed to get bet index")
 	}
 	var marbleIndex []string
 	json.Unmarshal(marblesAsBytes, &marbleIndex)							//un stringify it aka JSON.parse()
